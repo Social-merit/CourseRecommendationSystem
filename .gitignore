@@ -1,0 +1,12 @@
+*.idea
+*env 
+*.vscode
+
+# Compiled source #
+
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
