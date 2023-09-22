@@ -79,80 +79,86 @@ def extractfeatures(recdf):
 
     return course_url, course_title, course_price
 
-# Define the main route of the web application
+ # Define the home route of the web application
+# Define the main route of the web application, which supports both GET and POST methods
 @app.route('/', methods=['GET', 'POST'])
 def hello_world():
 
+    # Check if the request method is POST
     if request.method == 'POST':
 
+        # Collect form data from the client
         my_dict = request.form
         titlename = my_dict['course']
-        print(titlename)
+
+        # Read the data from the CSV file
+        df = readdata()
+
         try:
-            df = readdata()
+            # Clean the course titles in the DataFrame
             df = getcleantitle(df)
+
+            # Get the Count Vectorized matrix for course titles
             cvmat = getcosinemat(df)
 
+            # Set the number of recommendations to show
             num_rec = 6
+
+            # Calculate the cosine similarity matrix from the Count Vectorized matrix
             cosine_mat = cosinesimmat(cvmat)
 
-            recdf = recommend_course(df, titlename,
-                                     cosine_mat, num_rec)
-
-            course_url, course_title, course_price = extractfeatures(recdf)
-
-            # print(len(extractimages(course_url[1])))
-
-            dictmap = dict(zip(course_title, course_url))
-
-            if len(dictmap) != 0:
-                return render_template('index.html', coursemap=dictmap, coursename=titlename, showtitle=True)
-
-            else:
-                return render_template('index.html', showerror=True, coursename=titlename)
-
+            # Get the recommended DataFrame based on the chosen title and other parameters
+            recdf = recommend_course(df, titlename, cosine_mat, num_rec)
+            
         except:
+            # Search for courses that contain the term if any exception occurs
+            recdf = searchterm(titlename, df)
 
-            resultdf = searchterm(titlename, df)
-            if resultdf.shape[0] > 6:
-                resultdf = resultdf.head(6)
-                course_url, course_title, course_price = extractfeatures(
-                    resultdf)
-                coursemap = dict(zip(course_title, course_url))
-                if len(coursemap) != 0:
-                    return render_template('index.html', coursemap=coursemap, coursename=titlename, showtitle=True)
+            # Limit to top 6 if more than 6 results
+            if recdf.shape[0] > 6:
+                recdf = recdf.head(6)
 
-                else:
-                    return render_template('index.html', showerror=True, coursename=titlename)
+        # Extract features like URL, title, and price from the recommended DataFrame
+        course_url, course_title, course_price = extractfeatures(recdf)
 
-            else:
-                course_url, course_title, course_price = extractfeatures(
-                    resultdf)
-                coursemap = dict(zip(course_title, course_url))
-                if len(coursemap) != 0:
-                    return render_template('index.html', coursemap=coursemap, coursename=titlename, showtitle=True)
+        # Create a mapping between course titles and their URLs
+        coursemap = dict(zip(course_title, course_url))
 
-                else:
-                    return render_template('index.html', showerror=True, coursename=titlename)
+        # Check if any courses were found and render the appropriate template
+        if len(coursemap) != 0:
+            return render_template('index.html', coursemap=coursemap, coursename=titlename, showtitle=True)
+        else:
+            return render_template('index.html', showerror=True, coursename=titlename)
 
+    # If the request method is GET, just render the default index.html
     return render_template('index.html')
 
+
 # Define the dashboard route of the web application
+# Define the dashboard route of the web application, supporting both GET and POST methods
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
 
+    # Read the data from a CSV file into a DataFrame
     df = readdata()
+
+    # Get the count of unique values for some specific column(s) from the DataFrame
     valuecounts = getvaluecounts(df)
 
+    # Get counts of different course levels (like Beginner, Intermediate, etc.)
     levelcounts = getlevelcount(df)
 
+    # Get counts of subjects per each level
     subjectsperlevel = getsubjectsperlevel(df)
 
-    yearwiseprofitmap, subscriberscountmap, profitmonthwise, monthwisesub = yearwiseprofit(
-        df)
+    # Get various metrics related to profit and subscribers, possibly aggregated by year or month
+    yearwiseprofitmap, subscriberscountmap, profitmonthwise, monthwisesub = yearwiseprofit(df)
 
+    # Render the dashboard.html template and pass all the calculated data for display
     return render_template('dashboard.html', valuecounts=valuecounts, levelcounts=levelcounts,
-                           subjectsperlevel=subjectsperlevel, yearwiseprofitmap=yearwiseprofitmap, subscriberscountmap=subscriberscountmap, profitmonthwise=profitmonthwise, monthwisesub=monthwisesub)
+                           subjectsperlevel=subjectsperlevel, yearwiseprofitmap=yearwiseprofitmap, 
+                           subscriberscountmap=subscriberscountmap, profitmonthwise=profitmonthwise, 
+                           monthwisesub=monthwisesub)
 
 # Run the Flask app
 if __name__ == '__main__':
